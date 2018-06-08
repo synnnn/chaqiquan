@@ -3,9 +3,17 @@ import datetime
 import json
 from flask import Flask, request, Response
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.routing import BaseConverter
 from config import *
 
+
+class RegexConverter(BaseConverter):
+    def __init__(self, url_map, *items):
+        super(RegexConverter, self).__init__(url_map)
+        self.regex = items[0]
+
 app = Flask(__name__)
+app.url_map.converters['reg'] = RegexConverter
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 db = SQLAlchemy(app)
@@ -31,15 +39,45 @@ class Chaqiquan(db.Model):
         return '<Cqq %r>' % self.code
 
 
-@app.route('/all/')
-def all():
+@app.route('/today/')
+def today():
     hours = int(datetime.datetime.now().strftime('%H'))
     if hours < 8:
         day = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y%m%d')
     else:
         day = datetime.datetime.now().strftime('%Y%m%d')
 
-    sql = 'SELECT * FROM cqq_' + day
+    sql = 'SELECT * FROM cqq_' + day + ';'
+    result = db.session.execute(
+        sql
+    )
+
+    # 对象形式
+    response = {}
+    for i in result:
+        response[i.code] = {
+            'oneMonth': i.oneMonth,
+            'threeMonth': i.threeMonth,
+            'sixMonth': i.sixMonth
+        }
+
+    # 数组形式
+    # response = []
+    # for i in result:
+    #     item = {
+    #         'code': i.code,
+    #         'oneMonth': i.oneMonth,
+    #         'threeMonth': i.threeMonth,
+    #         'sixMonth': i.sixMonth
+    #     }
+    #     response.append(item)
+
+    return Response(json.dumps(response))
+
+
+@app.route('/history/<reg("[0-9]{8}"):day>', methods=['GET'])
+def history(day):
+    sql = 'SELECT * FROM cqq_' + day + ';'
     result = db.session.execute(
         sql
     )
