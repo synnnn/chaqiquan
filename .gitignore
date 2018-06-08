@@ -103,6 +103,6 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-#mac files
-.DS_Store
-.idea/
+# mac files
+# .DS_Store
+# .idea/
